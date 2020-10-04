@@ -54,3 +54,8 @@ The following commands were implemented:
 - :heavy_multiplication_x: `set_desktop_viewport`
 - :heavy_multiplication_x: `exec`
 - :heavy_check_mark: `sleep`
+
+Basic window stack is supported, but it needs additional shaping to ensure
+compatibility (+ it is missing support for `%1`, `%@`).
+
+I would appreciate help with a test runner (in pytest).
