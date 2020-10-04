@@ -62,6 +62,17 @@ class Xdo:
 
         return data[0]
 
+    def set_desktop_for_window(self, window_id: int, desktop: int) -> None:
+        self._assert_ewmh_support(
+            "_NET_WM_DESKTOP", "change a window's desktop location"
+        )
+
+        self._set_property(
+            "_NET_WM_DESKTOP",
+            [2, desktop],  # 2 == Message from a window pager
+            window_id,
+        )
+
     def set_current_desktop(self, desktop: int) -> None:
         self._assert_ewmh_support("_NET_CURRENT_DESKTOP", "change desktops")
         self._set_property(
@@ -97,11 +108,28 @@ class Xdo:
             window_id,
         )
 
-    def _set_property(self, atom_name, data, win=None, mask=None) -> None:
-        """Send a ClientMessage event to the root window."""
-        if not win:
+    def _set_property(
+        self,
+        atom_name: str,
+        data: T.Union[str, T.List[T.Any]],
+        window_id: T.Optional[int] = None,
+        target_window_id: T.Optional[int] = None,
+        mask: T.Optional[int] = None,
+    ) -> None:
+        """Send a ClientMessage event to the target window."""
+        if target_window_id:
+            target = self.xdpy.create_resource_object(
+                "window", target_window_id
+            )
+        else:
+            target = self.root
+
+        if window_id:
+            win = self.xdpy.create_resource_object("window", window_id)
+        else:
             win = self.root
-        if type(data) is str:
+
+        if isinstance(data, str):
             data_size = 8
         else:
             data = (data + [0] * (5 - len(data)))[:5]
@@ -117,6 +145,6 @@ class Xdo:
                 Xlib.X.SubstructureRedirectMask | Xlib.X.SubstructureNotifyMask
             )
 
-        ret = self.root.send_event(ev, event_mask=mask)
+        ret = target.send_event(ev, event_mask=mask)
         if ret:
             raise RuntimeError(f"XSendEvent[{atom_name}]")

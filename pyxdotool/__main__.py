@@ -50,6 +50,8 @@ def main() -> None:
     for window_id in window_stack:
         print(window_id)
 
+    xdo.get_active_window()  # ???????????
+
 
 if __name__ == "__main__":
     main()
