@@ -45,14 +45,14 @@ class Xdo:
         self._assert_ewmh_support(
             "_NET_ACTIVE_WINDOW", "query the active window"
         )
-        return self._get_property("_NET_ACTIVE_WINDOW")
+        return self._get_scalar_property("_NET_ACTIVE_WINDOW")
 
     def get_desktop_for_window(self, window_id: int) -> int:
         self._assert_ewmh_support(
             "_NET_WM_DESKTOP", "query a window's desktop location"
         )
 
-        return self._get_property("_NET_WM_DESKTOP", window_id)
+        return self._get_scalar_property("_NET_WM_DESKTOP", window_id)
 
     def set_desktop_for_window(self, window_id: int, desktop: int) -> None:
         self._assert_ewmh_support(
@@ -69,7 +69,7 @@ class Xdo:
         self._assert_ewmh_support(
             "_NET_CURRENT_DESKTOP", "query for the current desktop"
         )
-        return self._get_property("_NET_CURRENT_DESKTOP")
+        return self._get_scalar_property("_NET_CURRENT_DESKTOP")
 
     def set_current_desktop(self, desktop: int) -> None:
         self._assert_ewmh_support("_NET_CURRENT_DESKTOP", "change desktops")
@@ -110,7 +110,7 @@ class Xdo:
         self._assert_ewmh_support(
             "_NET_NUMBER_OF_DESKTOPS", "query the number of desktops"
         )
-        return self._get_property("_NET_NUMBER_OF_DESKTOPS")
+        return self._get_scalar_property("_NET_NUMBER_OF_DESKTOPS")
 
     def set_number_of_desktops(self, num_desktops: int) -> None:
         self._assert_ewmh_support(
@@ -135,10 +135,34 @@ class Xdo:
         data = win.get_full_property(request, Xlib.X.AnyPropertyType)
         if not data:
             raise XdoError(f"XGetWindowProperty[{atom_name}]")
-        if not data.value and not allow_empty:
-            raise XdoError(f"XGetWindowProperty[{atom_name}]")
+        if not data.value:
+            if not allow_empty:
+                raise XdoError(f"XGetWindowProperty[{atom_name}]")
+            return None
 
-        return data.value[0]
+        return data.value
+
+    def _get_scalar_property(
+        self,
+        atom_name: str,
+        window_id: T.Optional[int] = None,
+        allow_empty: bool = False,
+    ) -> int:
+        ret = self._get_property(atom_name, window_id, allow_empty)
+        if ret is None:
+            return ret
+        return ret[0]
+
+    def _get_string_property(
+        self,
+        atom_name: str,
+        window_id: T.Optional[int] = None,
+        allow_empty: bool = False,
+    ) -> int:
+        ret = self._get_property(atom_name, window_id, allow_empty)
+        if ret is None:
+            return ret
+        return "".join(map(chr, ret))
 
     def _set_property(
         self,
@@ -202,7 +226,9 @@ class Xdo:
             if not window:
                 return None
 
-            if self._get_property("WM_STATE", window_id, allow_empty=True):
+            if self._get_scalar_property(
+                "WM_STATE", window_id, allow_empty=True
+            ):
                 return window.id
 
             # This window doesn't have WM_STATE property, keep searching.
@@ -222,3 +248,13 @@ class Xdo:
 
             else:
                 assert False, "invalid search direction"
+
+    def get_window_name(self, window_id: int) -> T.Optional[str]:
+        ret = self._get_string_property(
+            "_NET_WM_NAME", window_id, allow_empty=True
+        )
+        if ret is None:
+            ret = self._get_string_property(
+                "WM_NAME", window_id, allow_empty=True
+            )
+        return ret
