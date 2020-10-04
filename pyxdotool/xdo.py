@@ -1,5 +1,6 @@
 import time
 import typing as T
+from enum import Enum
 
 import Xlib
 import Xlib.display
@@ -9,6 +10,11 @@ MAX_TRIES = 500
 
 class XdoError(RuntimeError):
     pass
+
+
+class XdoSearchDirection(Enum):
+    parents = 1
+    children = 2
 
 
 class Xdo:
@@ -116,18 +122,23 @@ class Xdo:
         )
 
     def _get_property(
-        self, atom_name: int, window_id: T.Optional[int] = None
+        self,
+        atom_name: int,
+        window_id: T.Optional[int] = None,
+        allow_empty: bool = False,
     ) -> T.Any:
         request = self.xdpy.intern_atom(atom_name)
         if window_id:
             win = self.xdpy.create_resource_object("window", window_id)
         else:
             win = self.root
-        data = win.get_full_property(request, Xlib.X.AnyPropertyType).value
+        data = win.get_full_property(request, Xlib.X.AnyPropertyType)
         if not data:
             raise XdoError(f"XGetWindowProperty[{atom_name}]")
+        if not data.value and not allow_empty:
+            raise XdoError(f"XGetWindowProperty[{atom_name}]")
 
-        return data[0]
+        return data.value[0]
 
     def _set_property(
         self,
@@ -169,3 +180,45 @@ class Xdo:
         ret = target.send_event(ev, event_mask=mask)
         if ret:
             raise RuntimeError(f"XSendEvent[{atom_name}]")
+
+    def get_focused_window(self) -> int:
+        return self.xdpy.get_input_focus().focus.id
+
+    def get_focused_window_sane(self) -> int:
+        window_ret = self.get_focused_window()
+        window_ret = self.find_window_client(
+            window_ret, XdoSearchDirection.children
+        )
+        if not window_ret:
+            raise XdoError(f"xdo_get_focused_window_sane")
+        return window_ret
+
+    def find_window_client(
+        self, window_id: int, direction: XdoSearchDirection
+    ) -> T.Optional[int]:
+        window = self.xdpy.create_resource_object("window", window_id)
+
+        while True:
+            if not window:
+                return None
+
+            if self._get_property("WM_STATE", window_id, allow_empty=True):
+                return window.id
+
+            # This window doesn't have WM_STATE property, keep searching.
+            result = window.query_tree()
+
+            if direction == XdoSearchDirection.parents:
+                window = result.parent
+
+            elif direction == XdoSearchDirection.children:
+                for child_window in result.children:
+                    window_ret = self.find_window_client(
+                        child_window.id, direction
+                    )
+                    if window_ret is not None:
+                        return window_ret
+                return None
+
+            else:
+                assert False, "invalid search direction"
