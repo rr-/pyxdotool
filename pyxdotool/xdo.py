@@ -39,28 +39,14 @@ class Xdo:
         self._assert_ewmh_support(
             "_NET_ACTIVE_WINDOW", "query the active window"
         )
-
-        request = self.xdpy.intern_atom("_NET_ACTIVE_WINDOW")
-        data = self.root.get_full_property(
-            request, Xlib.X.AnyPropertyType
-        ).value
-        if not data:
-            raise XdoError("XGetWindowProperty[_NET_ACTIVE_WINDOW]")
-
-        return data[0]
+        return self._get_property("_NET_ACTIVE_WINDOW")
 
     def get_desktop_for_window(self, window_id: int) -> int:
         self._assert_ewmh_support(
             "_NET_WM_DESKTOP", "query a window's desktop location"
         )
 
-        request = self.xdpy.intern_atom("_NET_WM_DESKTOP")
-        win = self.xdpy.create_resource_object("window", window_id)
-        data = win.get_full_property(request, Xlib.X.AnyPropertyType).value
-        if not data:
-            raise RuntimeError("XGetWindowProperty[_NET_WM_DESKTOP]")
-
-        return data[0]
+        return self._get_property("_NET_WM_DESKTOP", window_id)
 
     def set_desktop_for_window(self, window_id: int, desktop: int) -> None:
         self._assert_ewmh_support(
@@ -72,6 +58,12 @@ class Xdo:
             [2, desktop],  # 2 == Message from a window pager
             window_id,
         )
+
+    def get_current_desktop(self) -> int:
+        self._assert_ewmh_support(
+            "_NET_CURRENT_DESKTOP", "query for the current desktop"
+        )
+        return self._get_property("_NET_CURRENT_DESKTOP")
 
     def set_current_desktop(self, desktop: int) -> None:
         self._assert_ewmh_support("_NET_CURRENT_DESKTOP", "change desktops")
@@ -107,6 +99,20 @@ class Xdo:
             [2, Xlib.X.CurrentTime],  # 2 == Message from a window pager
             window_id,
         )
+
+    def _get_property(
+        self, atom_name: int, window_id: T.Optional[int] = None
+    ) -> T.Any:
+        request = self.xdpy.intern_atom(atom_name)
+        if window_id:
+            win = self.xdpy.create_resource_object("window", window_id)
+        else:
+            win = self.root
+        data = win.get_full_property(request, Xlib.X.AnyPropertyType).value
+        if not data:
+            raise XdoError(f"XGetWindowProperty[{atom_name}]")
+
+        return data[0]
 
     def _set_property(
         self,
