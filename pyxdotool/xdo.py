@@ -100,6 +100,12 @@ class Xdo:
             window_id,
         )
 
+    def get_number_of_desktops(self) -> int:
+        self._assert_ewmh_support(
+            "_NET_NUMBER_OF_DESKTOPS", "query the number of desktops"
+        )
+        return self._get_property("_NET_NUMBER_OF_DESKTOPS")
+
     def _get_property(
         self, atom_name: int, window_id: T.Optional[int] = None
     ) -> T.Any:
