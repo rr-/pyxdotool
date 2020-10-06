@@ -13,7 +13,7 @@ The following commands were implemented:
 - :heavy_check_mark: `getactivewindow`
 - :heavy_check_mark: `getwindowfocus`
 - :heavy_check_mark: `getwindowname`
-- :heavy_multiplication_x: `getwindowpid`
+- :heavy_check_mark: `getwindowpid`
 - :heavy_multiplication_x: `getwindowgeometry`
 - :heavy_multiplication_x: `getdisplaygeometry`
 - :heavy_multiplication_x: `search`

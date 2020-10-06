@@ -147,7 +147,7 @@ class Xdo:
         atom_name: str,
         window_id: T.Optional[int] = None,
         allow_empty: bool = False,
-    ) -> int:
+    ) -> T.Optional[int]:
         ret = self._get_property(atom_name, window_id, allow_empty)
         if ret is None:
             return ret
@@ -258,3 +258,6 @@ class Xdo:
                 "WM_NAME", window_id, allow_empty=True
             )
         return ret
+
+    def get_window_pid(self, window_id: int) -> T.Optional[int]:
+        return self._get_scalar_property("_NET_WM_PID", window_id)
