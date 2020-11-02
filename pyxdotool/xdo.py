@@ -261,3 +261,26 @@ class Xdo:
 
     def get_window_pid(self, window_id: int) -> T.Optional[int]:
         return self._get_scalar_property("_NET_WM_PID", window_id)
+
+    def get_window_size(self, window_id: int) -> T.Tuple[int, int]:
+        win = self.xdpy.create_resource_object("window", window_id)
+        geometry = win.get_geometry()
+        return geometry.width, geometry.height
+
+    def get_window_location(
+        self, window_id: int
+    ) -> T.Tuple[int, int, T.Optional[int]]:
+        win = self.xdpy.create_resource_object("window", window_id)
+        geometry = win.get_geometry()
+        for screen_id in range(self.xdpy.screen_count()):
+            screen = self.xdpy.screen(screen_id)
+            if screen.root == geometry.root:
+                break
+        else:
+            screen_id = None
+        if win.query_tree().parent == self.root:
+            return geometry.x, geometry.y, screen_id
+        translated_coords = self.root.translate_coords(
+            win, geometry.x, geometry.y
+        )
+        return translated_coords.x, translated_coords.y, screen_id
