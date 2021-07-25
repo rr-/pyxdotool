@@ -1,6 +1,7 @@
 import time
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional, Union, cast
+from typing import Any, Iterable, Optional, Union, cast
 
 import Xlib
 import Xlib.display
@@ -15,6 +16,15 @@ class XdoError(RuntimeError):
 class XdoSearchDirection(Enum):
     PARENTS = 1
     CHILDREN = 2
+
+
+@dataclass
+class XdoScreenInfo:
+    num: int
+    x: int
+    y: int
+    width: int
+    height: int
 
 
 class Xdo:
@@ -207,7 +217,7 @@ class Xdo:
 
         ret = target.send_event(event, event_mask=mask)
         if ret:
-            raise RuntimeError(f"XSendEvent[{atom_name}]")
+            raise XdoError(f"XSendEvent[{atom_name}]")
 
     def get_focused_window(self) -> int:
         return cast(int, self.xdpy.get_input_focus().focus.id)
@@ -217,7 +227,7 @@ class Xdo:
             self.get_focused_window(), XdoSearchDirection.CHILDREN
         )
         if not window_ret:
-            raise XdoError("xdo_get_focused_window_sane")
+            raise XdoError("Xdo.get_focused_window_sane")
         return window_ret
 
     def find_window_client(
@@ -273,19 +283,37 @@ class Xdo:
     ) -> tuple[int, int, Optional[int]]:
         win = self.xdpy.create_resource_object("window", window_id)
         geometry = win.get_geometry()
+
+        parent = win.query_tree().parent
+        root = win.query_tree().root
+        if parent == root:
+            win_x = geometry.x
+            win_y = geometry.y
+        else:
+            translated_coords = root.translate_coords(win, 0, 0)
+            win_x = translated_coords.x
+            win_y = translated_coords.y
+
+        win_w = geometry.width
+        win_h = geometry.height
+
         screen_id: Optional[int] = None
-        for screen_id in range(self.xdpy.screen_count()):
-            screen = self.xdpy.screen(screen_id)
-            if screen.root == geometry.root:
+        for screen in self.query_screens():
+            if (
+                screen.x <= win_x < screen.x + screen.width
+                and screen.y <= win_y < screen.y + screen.height
+            ):
+                screen_id = screen.num
                 break
         else:
-            screen_id = None
-        if win.query_tree().parent == self.root:
-            return geometry.x, geometry.y, screen_id
-        translated_coords = self.root.translate_coords(
-            win, geometry.x, geometry.y
-        )
-        return translated_coords.x, translated_coords.y, screen_id
+            for screen in self.query_screens():
+                if (
+                    screen.x <= win_x + win_w < screen.x + screen.width
+                    and screen.y <= win_y + win_h < screen.y + screen.height
+                ):
+                    screen_id = screen.num
+                    break
+        return win_x, win_y, screen_id
 
     def move_window(
         self, window_id: int, target_x: int, target_y: int
@@ -294,6 +322,31 @@ class Xdo:
         win.configure(x=target_x, y=target_y)
 
     def get_screen_size(self, screen_id: int) -> tuple[int, int]:
-        screen = self.xdpy.screen(screen_id)
-        geometry = screen.root.get_geometry()
-        return geometry.width, geometry.height
+        try:
+            screen = list(self.query_screens())[screen_id]
+        except IndexError as ex:
+            raise IndexError(f"Invalid screen {screen_id!r}") from ex
+        else:
+            return screen.width, screen.height
+
+    def get_screen_location(self, screen_id: int) -> tuple[int, int]:
+        try:
+            screen = list(self.query_screens())[screen_id]
+        except IndexError as ex:
+            raise IndexError(f"Invalid screen {screen_id!r}") from ex
+        else:
+            return screen.x, screen.y
+
+    def query_screens(self) -> Iterable[XdoScreenInfo]:
+        return [
+            XdoScreenInfo(
+                num=i,
+                x=screen.x,
+                y=screen.y,
+                width=screen.width,
+                height=screen.height,
+            )
+            for i, screen in enumerate(
+                self.xdpy.xinerama_query_screens().screens
+            )
+        ]
