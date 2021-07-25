@@ -10,6 +10,7 @@ from .get_window_pid import GetWindowPidCommand
 from .set_desktop import SetDesktopCommand
 from .set_desktop_for_window import SetDesktopForWindowCommand
 from .set_num_desktops import SetNumberOfDesktopsCommand
+from .set_screen_for_window import SetScreenForWindowCommand
 from .sleep import SleepCommand
 from .window_activate import WindowActivateCommand
 from .window_move import WindowMoveCommand
