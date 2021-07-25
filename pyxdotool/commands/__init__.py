@@ -12,3 +12,4 @@ from .set_desktop_for_window import SetDesktopForWindowCommand
 from .set_num_desktops import SetNumberOfDesktopsCommand
 from .sleep import SleepCommand
 from .window_activate import WindowActivateCommand
+from .window_move import WindowMoveCommand

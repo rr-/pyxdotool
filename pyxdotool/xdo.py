@@ -284,3 +284,14 @@ class Xdo:
             win, geometry.x, geometry.y
         )
         return translated_coords.x, translated_coords.y, screen_id
+
+    def move_window(
+        self, window_id: int, target_x: int, target_y: int
+    ) -> None:
+        win = self.xdpy.create_resource_object("window", window_id)
+        win.configure(x=target_x, y=target_y)
+
+    def get_screen_size(self, screen_id: int) -> T.Tuple[int, int]:
+        screen = self.xdpy.screen(screen_id)
+        geometry = screen.root.get_geometry()
+        return geometry.width, geometry.height

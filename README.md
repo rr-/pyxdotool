@@ -39,7 +39,7 @@ The following commands were implemented:
 - :heavy_multiplication_x: `windowclose`
 - :heavy_multiplication_x: `windowmap`
 - :heavy_multiplication_x: `windowminimize`
-- :heavy_multiplication_x: `windowmove`
+- :heavy_check_mark: `windowmove`
 - :heavy_multiplication_x: `windowraise`
 - :heavy_multiplication_x: `windowreparent`
 - :heavy_multiplication_x: `windowsize`
