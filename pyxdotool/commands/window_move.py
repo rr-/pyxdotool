@@ -39,11 +39,13 @@ If no window is given, %%1 is the default. See "WINDOW STACK" and "COMMAND CHAIN
     def run(cls, ctx: CommandContext) -> None:
         try:
             window_id = ctx.args.window_id or ctx.window_stack.pop()
-        except IndexError:
-            raise IndexError("Must specify window")
+        except IndexError as ex:
+            raise IndexError("Must specify window") from ex
 
         orig_x, orig_y, screen_id = ctx.xdo.get_window_location(window_id)
 
+        if screen_id is None:
+            raise RuntimeError("window has no screen")
         screen_w, screen_h = ctx.xdo.get_screen_size(screen_id)
 
         target_x = cls.resolve_coord(
@@ -65,13 +67,15 @@ If no window is given, %%1 is the default. See "WINDOW STACK" and "COMMAND CHAIN
                 and abs(target_x - new_x) > 10
                 and abs(target_y - new_y) > 50
             ):
-                new_x, new_y = ctx.xdo.get_window_location(window_id)
+                new_x, new_y, screen_id = ctx.xdo.get_window_location(
+                    window_id
+                )
 
     @staticmethod
     def resolve_coord(
         user_input: str,
-        orig_coord: float,
-        screen_size: float,
+        orig_coord: int,
+        screen_size: int,
         neutral_coord: str,
         is_relative: bool,
     ) -> int:

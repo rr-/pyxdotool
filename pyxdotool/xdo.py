@@ -1,6 +1,6 @@
 import time
-import typing as T
 from enum import Enum
+from typing import Any, Optional, Union, cast
 
 import Xlib
 import Xlib.display
@@ -13,12 +13,12 @@ class XdoError(RuntimeError):
 
 
 class XdoSearchDirection(Enum):
-    parents = 1
-    children = 2
+    PARENTS = 1
+    CHILDREN = 2
 
 
 class Xdo:
-    def __init__(self, display_name: T.Optional[str] = None) -> None:
+    def __init__(self, display_name: Optional[str] = None) -> None:
         self.xdpy = Xlib.display.Display()
         if not self.xdpy:
             raise XdoError(f"Error: Can't open display: {display_name}")
@@ -45,14 +45,14 @@ class Xdo:
         self._assert_ewmh_support(
             "_NET_ACTIVE_WINDOW", "query the active window"
         )
-        return self._get_scalar_property("_NET_ACTIVE_WINDOW")
+        return self._get_required_int_property("_NET_ACTIVE_WINDOW")
 
     def get_desktop_for_window(self, window_id: int) -> int:
         self._assert_ewmh_support(
             "_NET_WM_DESKTOP", "query a window's desktop location"
         )
 
-        return self._get_scalar_property("_NET_WM_DESKTOP", window_id)
+        return self._get_required_int_property("_NET_WM_DESKTOP", window_id)
 
     def set_desktop_for_window(self, window_id: int, desktop: int) -> None:
         self._assert_ewmh_support(
@@ -69,7 +69,7 @@ class Xdo:
         self._assert_ewmh_support(
             "_NET_CURRENT_DESKTOP", "query for the current desktop"
         )
-        return self._get_scalar_property("_NET_CURRENT_DESKTOP")
+        return self._get_required_int_property("_NET_CURRENT_DESKTOP")
 
     def set_current_desktop(self, desktop: int) -> None:
         self._assert_ewmh_support("_NET_CURRENT_DESKTOP", "change desktops")
@@ -110,7 +110,7 @@ class Xdo:
         self._assert_ewmh_support(
             "_NET_NUMBER_OF_DESKTOPS", "query the number of desktops"
         )
-        return self._get_scalar_property("_NET_NUMBER_OF_DESKTOPS")
+        return self._get_required_int_property("_NET_NUMBER_OF_DESKTOPS")
 
     def set_number_of_desktops(self, num_desktops: int) -> None:
         self._assert_ewmh_support(
@@ -123,10 +123,10 @@ class Xdo:
 
     def _get_property(
         self,
-        atom_name: int,
-        window_id: T.Optional[int] = None,
+        atom_name: str,
+        window_id: Optional[int] = None,
         allow_empty: bool = False,
-    ) -> T.Any:
+    ) -> Any:
         request = self.xdpy.intern_atom(atom_name)
         if window_id:
             win = self.xdpy.create_resource_object("window", window_id)
@@ -142,23 +142,27 @@ class Xdo:
 
         return data.value
 
-    def _get_scalar_property(
-        self,
-        atom_name: str,
-        window_id: T.Optional[int] = None,
-        allow_empty: bool = False,
-    ) -> T.Optional[int]:
-        ret = self._get_property(atom_name, window_id, allow_empty)
+    def _get_required_int_property(
+        self, atom_name: str, window_id: Optional[int] = None
+    ) -> int:
+        ret = self._get_property(atom_name, window_id, allow_empty=False)
+        assert ret is not None
+        return cast(int, ret[0])
+
+    def _get_optional_int_property(
+        self, atom_name: str, window_id: Optional[int] = None
+    ) -> Optional[int]:
+        ret = self._get_property(atom_name, window_id, allow_empty=False)
         if ret is None:
-            return ret
-        return ret[0]
+            return None
+        return cast(Optional[int], ret[0])
 
     def _get_string_property(
         self,
         atom_name: str,
-        window_id: T.Optional[int] = None,
+        window_id: Optional[int] = None,
         allow_empty: bool = False,
-    ) -> int:
+    ) -> Optional[str]:
         ret = self._get_property(atom_name, window_id, allow_empty)
         if ret is None:
             return ret
@@ -167,10 +171,10 @@ class Xdo:
     def _set_property(
         self,
         atom_name: str,
-        data: T.Union[str, T.List[T.Any]],
-        window_id: T.Optional[int] = None,
-        target_window_id: T.Optional[int] = None,
-        mask: T.Optional[int] = None,
+        data: Union[str, list[Any]],
+        window_id: Optional[int] = None,
+        target_window_id: Optional[int] = None,
+        mask: Optional[int] = None,
     ) -> None:
         """Send a ClientMessage event to the target window."""
         if target_window_id:
@@ -192,7 +196,7 @@ class Xdo:
             data_size = 32
 
         atom = self.xdpy.get_atom(atom_name)
-        ev = Xlib.protocol.event.ClientMessage(
+        event = Xlib.protocol.event.ClientMessage(
             window=win, client_type=atom, data=(data_size, data)
         )
 
@@ -201,43 +205,40 @@ class Xdo:
                 Xlib.X.SubstructureRedirectMask | Xlib.X.SubstructureNotifyMask
             )
 
-        ret = target.send_event(ev, event_mask=mask)
+        ret = target.send_event(event, event_mask=mask)
         if ret:
             raise RuntimeError(f"XSendEvent[{atom_name}]")
 
     def get_focused_window(self) -> int:
-        return self.xdpy.get_input_focus().focus.id
+        return cast(int, self.xdpy.get_input_focus().focus.id)
 
     def get_focused_window_sane(self) -> int:
-        window_ret = self.get_focused_window()
         window_ret = self.find_window_client(
-            window_ret, XdoSearchDirection.children
+            self.get_focused_window(), XdoSearchDirection.CHILDREN
         )
         if not window_ret:
-            raise XdoError(f"xdo_get_focused_window_sane")
+            raise XdoError("xdo_get_focused_window_sane")
         return window_ret
 
     def find_window_client(
         self, window_id: int, direction: XdoSearchDirection
-    ) -> T.Optional[int]:
+    ) -> Optional[int]:
         window = self.xdpy.create_resource_object("window", window_id)
 
         while True:
             if not window:
                 return None
 
-            if self._get_scalar_property(
-                "WM_STATE", window_id, allow_empty=True
-            ):
-                return window.id
+            if self._get_optional_int_property("WM_STATE", window_id):
+                return cast(int, window.id)
 
             # This window doesn't have WM_STATE property, keep searching.
             result = window.query_tree()
 
-            if direction == XdoSearchDirection.parents:
+            if direction == XdoSearchDirection.PARENTS:
                 window = result.parent
 
-            elif direction == XdoSearchDirection.children:
+            elif direction == XdoSearchDirection.CHILDREN:
                 for child_window in result.children:
                     window_ret = self.find_window_client(
                         child_window.id, direction
@@ -249,7 +250,7 @@ class Xdo:
             else:
                 assert False, "invalid search direction"
 
-    def get_window_name(self, window_id: int) -> T.Optional[str]:
+    def get_window_name(self, window_id: int) -> Optional[str]:
         ret = self._get_string_property(
             "_NET_WM_NAME", window_id, allow_empty=True
         )
@@ -259,19 +260,20 @@ class Xdo:
             )
         return ret
 
-    def get_window_pid(self, window_id: int) -> T.Optional[int]:
-        return self._get_scalar_property("_NET_WM_PID", window_id)
+    def get_window_pid(self, window_id: int) -> Optional[int]:
+        return self._get_required_int_property("_NET_WM_PID", window_id)
 
-    def get_window_size(self, window_id: int) -> T.Tuple[int, int]:
+    def get_window_size(self, window_id: int) -> tuple[int, int]:
         win = self.xdpy.create_resource_object("window", window_id)
         geometry = win.get_geometry()
         return geometry.width, geometry.height
 
     def get_window_location(
         self, window_id: int
-    ) -> T.Tuple[int, int, T.Optional[int]]:
+    ) -> tuple[int, int, Optional[int]]:
         win = self.xdpy.create_resource_object("window", window_id)
         geometry = win.get_geometry()
+        screen_id: Optional[int] = None
         for screen_id in range(self.xdpy.screen_count()):
             screen = self.xdpy.screen(screen_id)
             if screen.root == geometry.root:
@@ -291,7 +293,7 @@ class Xdo:
         win = self.xdpy.create_resource_object("window", window_id)
         win.configure(x=target_x, y=target_y)
 
-    def get_screen_size(self, screen_id: int) -> T.Tuple[int, int]:
+    def get_screen_size(self, screen_id: int) -> tuple[int, int]:
         screen = self.xdpy.screen(screen_id)
         geometry = screen.root.get_geometry()
         return geometry.width, geometry.height

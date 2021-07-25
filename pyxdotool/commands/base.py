@@ -1,5 +1,4 @@
 import argparse
-import typing as T
 from dataclasses import dataclass
 
 from pyxdotool.xdo import Xdo
@@ -9,11 +8,11 @@ from pyxdotool.xdo import Xdo
 class CommandContext:
     xdo: Xdo
     args: argparse.Namespace
-    window_stack: T.List[int]
+    window_stack: list[int]
 
 
 class BaseCommand:
-    names: T.List[str] = NotImplemented
+    names: list[str] = NotImplemented
     description: str = NotImplemented
 
     @classmethod

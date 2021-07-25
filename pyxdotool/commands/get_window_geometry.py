@@ -42,16 +42,16 @@ class GetWindowGeometryCommand(BaseCommand):
             raise IndexError("Must specify window")
 
         for window_id in window_ids:
-            width, height = ctx.xdo.get_window_size(window_id)
-            x, y, screen_id = ctx.xdo.get_window_location(window_id)
+            win_w, win_h = ctx.xdo.get_window_size(window_id)
+            win_x, win_y, screen_id = ctx.xdo.get_window_location(window_id)
             if ctx.args.shell_output:
                 print(f"{ctx.args.prefix}WINDOW={window_id}")
-                print(f"{ctx.args.prefix}X={x}")
-                print(f"{ctx.args.prefix}Y={y}")
-                print(f"{ctx.args.prefix}WIDTH={width}")
-                print(f"{ctx.args.prefix}HEIGHT={height}")
+                print(f"{ctx.args.prefix}X={win_x}")
+                print(f"{ctx.args.prefix}Y={win_y}")
+                print(f"{ctx.args.prefix}WIDTH={win_w}")
+                print(f"{ctx.args.prefix}HEIGHT={win_h}")
                 print(f"{ctx.args.prefix}SCREEN={screen_id}")
             else:
                 print(f"Window {window_id}")
-                print(f"  Position: {x},{y} (screen: {screen_id})")
-                print(f"  Geometry: {width}x{height}")
+                print(f"  Position: {win_x},{win_y} (screen: {screen_id})")
+                print(f"  Geometry: {win_w}x{win_h}")

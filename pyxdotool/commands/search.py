@@ -5,13 +5,15 @@ from pyxdotool.commands.base import BaseCommand, CommandContext
 
 
 class WindowSearchMode(Enum):
-    Any = 1
-    All = 2
+    ANY = 1
+    ALL = 2
 
 
 class SearchWindowCommand(BaseCommand):
     names = ["search"]
-    description = "If none of --name, --classname, or --class are specified, the defaults are: --name --classname --class"
+    description = """
+If none of --name, --classname, or --class are specified, the defaults are: --name --classname --class
+""".strip()
 
     @classmethod
     def decorate_arg_parser(cls, parser: argparse.ArgumentParser) -> None:
@@ -29,10 +31,10 @@ class SearchWindowCommand(BaseCommand):
         parser.add_argument("--prefix", metavar="STR")
         parser.add_argument("--title", action="store_true")
         parser.add_argument(
-            "--all", action="store_const", const=WindowSearchMode.Any
+            "--all", action="store_const", const=WindowSearchMode.ANY
         )
         parser.add_argument(
-            "--any", action="store_const", const=WindowSearchMode.All
+            "--any", action="store_const", const=WindowSearchMode.ALL
         )
         parser.add_argument("--sync", action="store_true")
 

@@ -1,5 +1,3 @@
-import argparse
-
 from pyxdotool.commands.base import BaseCommand, CommandContext
 
 

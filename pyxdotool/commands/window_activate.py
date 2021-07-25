@@ -35,8 +35,8 @@ class WindowActivateCommand(BaseCommand):
     def run(cls, ctx: CommandContext) -> None:
         try:
             window_id = ctx.args.window_id or ctx.window_stack.pop()
-        except IndexError:
-            raise IndexError("Must specify window")
+        except IndexError as ex:
+            raise IndexError("Must specify window") from ex
 
         ctx.xdo.activate_window(window_id)
         if ctx.args.sync:

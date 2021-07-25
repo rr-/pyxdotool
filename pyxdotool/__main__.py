@@ -1,14 +1,14 @@
 import argparse
 import sys
-import typing as T
+from typing import Iterable, Optional
 
 from pyxdotool.commands.base import BaseCommand, CommandContext
 from pyxdotool.xdo import Xdo
 
 
 def parse_args(
-    argv: T.Optional[T.List[str]] = None,
-) -> T.Iterable[argparse.Namespace]:
+    argv: Optional[list[str]] = None,
+) -> Iterable[argparse.Namespace]:
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers()
@@ -39,7 +39,7 @@ def parse_args(
 def main() -> None:
     args_list = list(parse_args(sys.argv[1:]))
 
-    window_stack: T.List[int] = []
+    window_stack: list[int] = []
     xdo = Xdo()
 
     for args in args_list:

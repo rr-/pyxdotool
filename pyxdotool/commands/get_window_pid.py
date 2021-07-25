@@ -28,7 +28,7 @@ class GetWindowPidCommand(BaseCommand):
     def run(cls, ctx: CommandContext) -> None:
         try:
             window_id = ctx.args.window_id or ctx.window_stack.pop()
-        except IndexError:
-            raise IndexError("Must specify window")
+        except IndexError as ex:
+            raise IndexError("Must specify window") from ex
 
         print(ctx.xdo.get_window_pid(window_id))
